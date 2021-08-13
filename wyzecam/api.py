@@ -112,6 +112,7 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
         product_model: Optional[str] = device.get("product_model")
         nickname: Optional[str] = device.get("nickname")
         timezone_name: Optional[str] = device.get("timezone_name")
+        firmware_ver: Optional[str] = device.get("firmware_ver")
 
         if not p2p_id:
             continue
@@ -125,6 +126,8 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
             continue
         if not product_model:
             continue
+        if not firmware_ver:
+            continue
 
         result.append(
             WyzeCamera(
@@ -136,6 +139,7 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
                 product_model=product_model,
                 nickname=nickname,
                 timezone_name=timezone_name,
+                firmware_ver=firmware_ver,
             )
         )
     return result
