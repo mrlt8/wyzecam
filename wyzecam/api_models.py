@@ -71,6 +71,7 @@ class WyzeCamera(BaseModel):
     timezone_name: Optional[str]
     firmware_ver: Optional[str]
     dtls: Optional[int]
+    thumbnail: Optional[str]
 
     def set_camera_info(self, info: Dict[str, Any]) -> None:
         # Called internally as part of WyzeIOTC.connect_and_auth()
