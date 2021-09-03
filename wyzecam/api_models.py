@@ -15,13 +15,12 @@ class WyzeCredential(BaseModel):
     :var phone_id: The phone id passed to [login()][wyzecam.api.login]
     """
 
-    access_token: str
-    refresh_token: str
+    access_token: Optional[str]
+    refresh_token: Optional[str]
     user_id: str
-    mfa_options: Optional[Dict[str, Any]]
+    mfa_options: Optional[list]
     mfa_details: Optional[Dict[str, Any]]
     sms_session_id: Optional[str]
-
     phone_id: str
 
 
