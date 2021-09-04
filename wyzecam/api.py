@@ -49,6 +49,31 @@ def login(
     return WyzeCredential.parse_obj(dict(resp.json(), phone_id=phone_id))
 
 
+def send_sms_code(auth_info: WyzeCredential) -> str:
+    """Request SMS verification code
+
+    This method calls out to the `/user/login/sendSmsCode` endpoint of
+    `auth-prod.api.wyze.com` (using https), and requests an SMS verification
+    code necessary to login to accounts with SMS verification enabled.
+
+    :param auth_info: the result of a [`login()`][wyzecam.api.login] call.
+    :returns: verification_id required to logging in with SMS verification.
+    """
+    payload = {
+        "mfaPhoneType": "Primary",
+        "sessionId": auth_info.sms_session_id,
+        "userId": auth_info.user_id,
+    }
+    resp = requests.post(
+        "https://auth-prod.api.wyze.com/user/login/sendSmsCode",
+        json={},
+        params=payload,
+        headers=get_headers(auth_info.phone_id),
+    )
+    resp.raise_for_status()
+    return resp.json().get("session_id")
+
+
 def refresh_token(auth_info: WyzeCredential) -> WyzeCredential:
     """Refresh Auth Token
 
