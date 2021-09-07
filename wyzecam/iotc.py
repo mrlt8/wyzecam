@@ -369,16 +369,16 @@ class WyzeIOTCSession:
                 else:
                     raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
-            if frame_info.frame_size != self.preferred_frame_size:
-                if frame_info.frame_size < 2:
-                    logger.debug(
-                        f"skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
-                    )
-                    continue
-                else:
-                    # wyze doorbell has weird rotated image sizes.
-                    if frame_info.frame_size - 3 != self.preferred_frame_size:
-                        continue
+            # if frame_info.frame_size != self.preferred_frame_size:
+            #     if frame_info.frame_size < 2:
+            #         logger.debug(
+            #             f"skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
+            #         )
+            #         continue
+            #     else:
+            #         # wyze doorbell has weird rotated image sizes.
+            #         if frame_info.frame_size - 3 != self.preferred_frame_size:
+            #             continue
 
             yield frame_data, frame_info
 
