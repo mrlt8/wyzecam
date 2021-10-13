@@ -10,6 +10,7 @@ from ctypes import (
     c_char_p,
     c_int,
     c_int32,
+    c_int8,
     c_uint,
     c_uint8,
     c_uint16,
@@ -164,6 +165,11 @@ class TutkError(RuntimeError):
         -66: "IOTC_ER_WAKEUP_NOT_INITIALIZED",
         -90: "IOTC_ER_DEVICE_OFFLINE",
         -91: "IOTC_ER_MASTER_INVALID",
+        -1001: "TUTK_ER_ALREADY_INITIALIZED",
+        -1002: "TUTK_ER_INVALID_ARG",
+        -1003: "TUTK_ER_MEM_INSUFFICIENT",
+        -1004: "TUTK_ER_INVALID_LICENSE_KEY",
+        -1005: "TUTK_ER_NO_LICENSE_KEY",
         -20000: "AV_ER_INVALID_ARG",
         -20001: "AV_ER_BUFPARA_MAXSIZE_INSUFF",
         -20002: "AV_ER_EXCEED_MAX_CHANNEL",
@@ -197,6 +203,24 @@ class TutkError(RuntimeError):
         -20030: "AV_ER_SOCKET_QUEUE_FULL",
         -20031: "AV_ER_ALREADY_INITIALIZED",
         -20032: "AV_ER_DASA_CLEAN_BUFFER",
+        -20033: "AV_ER_NOT_SUPPORT",
+        -20034: "AV_ER_FAIL_INITIALIZE_DTLS",
+        -20035: "AV_ER_FAIL_CREATE_DTLS",
+        -20036: "AV_ER_REQUEST_ALREADY_CALLED",
+        -20037: "AV_ER_REMOTE_NOT_SUPPORT",
+        -20038: "AV_ER_TOKEN_EXCEED_MAX_SIZE",
+        -20039: "AV_ER_REMOTE_NOT_SUPPORT_DTLS",
+        -20040: "AV_ER_DTLS_WRONG_PWD",
+        -20041: "AV_ER_DTLS_AUTH_FAIL",
+        -20042: "AV_ER_VSAAS_PULLING_NOT_ENABLE",
+        -20043: "AV_ER_FAIL_CONNECT_TO_VSAAS",
+        -20044: "AV_ER_PARSE_JSON_FAIL",
+        -20045: "AV_ER_PUSH_NOTIFICATION_NOT_ENABLE",
+        -20046: "AV_ER_PUSH_NOTIFICATION_ALREADY_ENABLED",
+        -20047: "AV_ER_NO_NOTIFICATION_LIST",
+        -20048: "AV_ER_HTTP_ERROR",
+        -20049: "AV_ER_LOCAL_NOT_SUPPORT_DTLS",
+        -21334: "AV_ER_SDK_NOT_SUPPORT_DTLS",
     }
 
     def __init__(self, code):
@@ -223,7 +247,7 @@ class FormattedStructure(Structure):
         return f"{self.__class__.__name__}:\n\t{fields}"
 
 
-class SInfoStruct(FormattedStructure):
+class SInfoStructEx(FormattedStructure):
     """
     Result of iotc_session_check(), this struct holds a bunch of diagnostic
     data about the state of the connection to the camera.
@@ -258,16 +282,17 @@ class SInfoStruct(FormattedStructure):
     """
 
     _fields_ = [
+        ("size", c_uint32),  # size of the structure
         ("mode", c_uint8),  # 0: P2P mode, 1: Relay mode, 2: LAN mode
-        ("c_or_d", c_uint8),  # 0: As a Client, 1: As a Device
+        ("c_or_d", c_int8),  # 0: As a Client, 1: As a Device
         ("uid", c_char * 21),  # The UID of the device.
         (
             "remote_ip",
-            c_char * 17,
+            c_char * 47,
         ),  # The IP address of remote site used during this IOTC session.
         (
             "remote_port",
-            c_uint8,
+            c_ushort,
         ),  # The port number of remote site used during this IOTC session.
         (
             "tx_packet_count",
@@ -281,11 +306,29 @@ class SInfoStruct(FormattedStructure):
         ("vendor_id", c_ushort),
         ("product_id", c_ushort),
         ("group_id", c_ushort),
-        ("nat_type", c_uint8),  # The remote NAT type.
         (
             "is_secure",
             c_uint8,
         ),  # 0: The IOTC session is in non-secure mode, 1: The IOTC session is in secure mode
+        ("local_nat_type", c_uint8),  # The local NAT type.
+        ("remote_nat_type", c_uint8),  # The remote NAT type.
+        ("relay_type", c_uint8),  # 0: Not Relay, 1: UDP Relay, 2: TCP Relay
+        (
+            "net_state",
+            c_uint32,
+        ),  # If no UDP packet is ever received, the first bit of value is 1, otherwise 0
+        (
+            "remote_wan_ip",
+            c_char * 47,
+        ),  # The WAN IP address of remote site used during this IOTC session and it is only valid in P2P or Relay mode
+        (
+            "remote_wan_port",
+            c_ushort,
+        ),  # The WAN port number of remote site used during this IOTC session and it is only valid in P2P or Relay mode
+        (
+            "is_nebula",
+            c_uint8,
+        ),  # 0: Session not created by nebula, 1: Session created by nebula
     ]
 
 
@@ -361,6 +404,41 @@ class FrameInfo3Struct(FormattedStructure):
     ]
 
 
+class St_IOTCConnectInput(FormattedStructure):
+    _fields_ = [
+        ("cb", c_uint32),
+        ("authenticationType", c_uint32),
+        ("authKey", c_char * 8),
+        ("timeout", c_uint32),
+    ]
+
+
+class AVClientStartInConfig(FormattedStructure):
+    _fields_ = [
+        ("cb", c_uint32),
+        ("iotc_session_id", c_uint32),
+        ("iotc_channel_id", c_uint8),
+        ("timeout_sec", c_uint32),
+        ("account_or_identity", c_char_p),
+        ("password_or_token", c_char_p),
+        ("resend", c_int8),
+        ("security_mode", c_int),
+        ("auth_type", c_int),
+        ("sync_recv_data", c_int32),
+    ]
+
+
+class AVClientStartOutConfig(FormattedStructure):
+    _fields_ = [
+        ("cb", c_uint32),
+        ("server_type", c_uint32),
+        ("resend", c_int8),
+        ("two_way_streaming", c_int32),
+        ("sync_recv_data", c_int32),
+        ("security_mode", c_int),
+    ]
+
+
 def av_recv_frame_data(
     tutk_platform_lib: CDLL, av_chan_id: c_int
 ) -> typing.Tuple[
@@ -401,26 +479,26 @@ def av_recv_frame_data(
 
     if errno < 0:
         return errno, None, None, None
+
+    frame_data_actual: bytes = frame_data[: frame_data_actual_len.value]  # type: ignore
+    frame_info_actual: Union[FrameInfoStruct, FrameInfo3Struct]
+    if frame_info_actual_len.value == sizeof(FrameInfo3Struct):
+        frame_info_actual = FrameInfo3Struct.from_buffer(frame_info)
+    elif frame_info_actual_len.value == sizeof(FrameInfoStruct):
+        frame_info_actual = FrameInfoStruct.from_buffer(frame_info)
     else:
-        frame_data_actual: bytes = frame_data[: frame_data_actual_len.value]  # type: ignore
-        frame_info_actual: Union[FrameInfoStruct, FrameInfo3Struct]
-        if frame_info_actual_len.value == sizeof(FrameInfo3Struct):
-            frame_info_actual = FrameInfo3Struct.from_buffer(frame_info)
-        elif frame_info_actual_len.value == sizeof(FrameInfoStruct):
-            frame_info_actual = FrameInfoStruct.from_buffer(frame_info)
-        else:
-            from wyzecam.tutk.tutk_protocol import TutkWyzeProtocolError
+        from wyzecam.tutk.tutk_protocol import TutkWyzeProtocolError
 
-            raise TutkWyzeProtocolError(
-                f"Unknown frame info structure format! len={frame_info_actual_len}"
-            )
-
-        return (
-            0,
-            frame_data_actual,
-            frame_info_actual,
-            frame_index.value,
+        raise TutkWyzeProtocolError(
+            f"Unknown frame info structure format! len={frame_info_actual_len}"
         )
+
+    return (
+        0,
+        frame_data_actual,
+        frame_info_actual,
+        frame_index.value,
+    )
 
 
 def av_recv_io_ctrl(
@@ -453,7 +531,9 @@ def av_recv_io_ctrl(
     )
 
 
-def av_client_set_max_buf_size(tutk_platform_lib: CDLL, size: int) -> None:
+def av_client_set_max_buf_size(
+    tutk_platform_lib: CDLL, channel_id: int, size: int
+) -> None:
     """Set the maximum video frame buffer used in AV client.
 
     AV client sets the maximum video frame buffer by this function. The size of
@@ -463,7 +543,7 @@ def av_client_set_max_buf_size(tutk_platform_lib: CDLL, size: int) -> None:
     :param tutk_platform_lib: the c library loaded from the 'load_library' call.
     :param size: The maximum video frame buffer, in unit of kilo-byte
     """
-    tutk_platform_lib.avClientSetMaxBufSize(c_int(size))
+    tutk_platform_lib.avClientSetRecvBufMaxSize(c_int(channel_id), c_int(size))
 
 
 def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
@@ -515,6 +595,8 @@ def av_client_start(
     password: bytes,
     timeout_secs: int,
     channel_id: int,
+    security_mode: int,
+    resend: c_int8,
 ) -> typing.Tuple[c_int, c_uint]:
     """Start an AV client.
 
@@ -534,18 +616,25 @@ def av_client_start(
              - av_chan_id: AV channel ID if return value >= 0; error code if return value < 0
              - pn_serv_type: The user-defined service type set when an AV server starts. Can be NULL.
     """
-    n_timeout = c_uint(timeout_secs)
-    user_defined_service_type = c_uint()
-    chan_id = c_uint8(channel_id)
-    av_chan_id = tutk_platform_lib.avClientStart(
-        session_id,
-        c_char_p(username),
-        c_char_p(password),
-        n_timeout,
-        pointer(user_defined_service_type),
-        chan_id,
+
+    AVC_in = AVClientStartInConfig()
+    AVC_in.cb = sizeof(AVC_in)
+    AVC_in.iotc_session_id = session_id
+    AVC_in.iotc_channel_id = channel_id
+    AVC_in.timeout_sec = timeout_secs
+    AVC_in.account_or_identity = username
+    AVC_in.password_or_token = password
+    AVC_in.resend = resend
+    AVC_in.security_mode = security_mode
+    AVC_in.auth_type = 0
+
+    AVC_out = AVClientStartOutConfig()
+    AVC_out.cb = sizeof(AVC_out)
+
+    av_chan_id = tutk_platform_lib.avClientStartEx(
+        pointer(AVC_in), pointer(AVC_out)
     )
-    return av_chan_id, user_defined_service_type
+    return av_chan_id
 
 
 def av_initialize(
@@ -580,7 +669,7 @@ def av_deinitialize(tutk_platform_lib: CDLL) -> int:
 
 def iotc_session_check(
     tutk_platform_lib: CDLL, session_id: c_int
-) -> typing.Tuple[int, SInfoStruct]:
+) -> typing.Tuple[int, SInfoStructEx]:
     """Used by a device or a client to check the IOTC session info.
 
     A device or a client may use this function to check if the IOTC session is
@@ -590,8 +679,9 @@ def iotc_session_check(
     :param session_id: The session ID of the IOTC session to be checked
     :return: The session info of specified IOTC session
     """
-    sess_info = SInfoStruct()
-    err_code = tutk_platform_lib.IOTC_Session_Check(
+    sess_info = SInfoStructEx()
+    sess_info.size = sizeof(sess_info)
+    err_code = tutk_platform_lib.IOTC_Session_Check_Ex(
         session_id, pointer(sess_info)
     )
     return err_code, sess_info
@@ -648,6 +738,35 @@ def iotc_connect_by_uid_parallel(
     return resultant_session_id
 
 
+def iotc_connect_by_uid_ex(
+    tutk_platform_lib: CDLL, p2p_id: str, session_id: c_int, auth_key: str
+) -> c_int:
+    """Used by a client to connect a device and bind to a specified session ID.
+
+    This function is for a client to connect a device by specifying the UID of that device,
+    and bind to a tutk_platform_free session ID from IOTC_Get_SessionID(). If connection is
+    established with the help of IOTC servers, the IOTC_ER_NoERROR will be returned in this
+    function and then device and client can communicate for the other later by using this
+    IOTC session ID. If this function is called by multiple threads, the connections will
+    be processed concurrently.
+
+    :param tutk_platform_lib: The underlying c library (from tutk.load_library())
+    :param p2p_id: The UID of a device that client wants to connect
+    :param session_id: The Session ID got from IOTC_Get_SessionID() the connection should bind to.
+    :return: IOTC session ID if return value >= 0, error code if return value < 0
+    """
+    connect_input = St_IOTCConnectInput()
+    connect_input.cb = sizeof(connect_input)
+    connect_input.authenticationType = 0
+    connect_input.authKey = auth_key
+    connect_input.timeout = 60
+
+    resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
+        c_char_p(p2p_id.encode("ascii")), session_id, pointer(connect_input)
+    )
+    return resultant_session_id
+
+
 def iotc_connect_stop_by_session_id(
     tutk_platform_lib: CDLL, session_id: c_int
 ) -> c_int:
@@ -668,7 +787,8 @@ def iotc_connect_stop_by_session_id(
 
 
 def iotc_set_log_path(tutk_platform_lib: CDLL, path: str) -> None:
-    """Set path of log file.
+    """DEPRECATED
+    Set path of log file.
 
     Set the absolute path of log file
     """
@@ -682,9 +802,9 @@ def iotc_get_version(tutk_platform_lib: CDLL) -> int:
 
     This function returns the version of IOTC module.
     """
-    version = c_uint32()
-    tutk_platform_lib.IOTC_Get_Version(pointer(version))
-    return version.value
+    version = tutk_platform_lib.IOTC_Get_Version_String()
+
+    return version
 
 
 def iotc_initialize(tutk_platform_lib: CDLL, udp_port: int = 0) -> int:
@@ -704,7 +824,14 @@ def iotc_initialize(tutk_platform_lib: CDLL, udp_port: int = 0) -> int:
     :param udp_port: Specify a UDP port. Random UDP port is used if it is specified as 0.
     :return: 0 if successful, Error code if return value < 0
     """
+
     errno: int = tutk_platform_lib.IOTC_Initialize2(udp_port)
+    return errno
+
+
+def TUTK_SDK_Set_License_Key(tutk_platform_lib: CDLL, key: str) -> int:
+
+    errno: int = tutk_platform_lib.TUTK_SDK_Set_License_Key(key.encode())
     return errno
 
 

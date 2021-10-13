@@ -1,5 +1,7 @@
 from typing import Any, Dict, Iterator, Optional, Tuple, Union
 
+import hashlib
+import base64
 import enum
 import logging
 import pathlib
@@ -62,6 +64,7 @@ class WyzeIOTC:
         tutk_platform_lib: Optional[Union[str, CDLL]] = None,
         udp_port: Optional[int] = None,
         max_num_av_channels: Optional[int] = None,
+        sdk_key: Optional[str] = "",
         debug: bool = False,
     ) -> None:
         """Construct a WyzeIOTC session object
@@ -85,6 +88,7 @@ class WyzeIOTC:
         self.initd = False
         self.udp_port = udp_port
         self.max_num_av_channels = max_num_av_channels
+        self.sdk_key = sdk_key
 
         if debug:
             logging.basicConfig()
@@ -103,6 +107,11 @@ class WyzeIOTC:
         if self.initd:
             return
         self.initd = True
+        license_status = tutk.TUTK_SDK_Set_License_Key(
+            self.tutk_platform_lib, self.sdk_key
+        )
+        if license_status < 0:
+            raise tutk.TutkError(license_status)
 
         errno = tutk.iotc_initialize(
             self.tutk_platform_lib, udp_port=self.udp_port or 0
@@ -259,7 +268,7 @@ class WyzeIOTCSession:
         self.preferred_frame_size: int = frame_size
         self.preferred_bitrate: int = bitrate
 
-    def session_check(self) -> tutk.SInfoStruct:
+    def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
 
         A device or a client may use this function to check if the IOTC session is
@@ -433,10 +442,7 @@ class WyzeIOTCSession:
     def recv_video_frame_ndarray(
         self,
     ) -> Iterator[
-        Tuple[
-            "np.ndarray[Any, Any]",
-            Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct],
-        ]
+        Tuple["np.ndarray", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
     ]:
         """A generator for returning decoded video frames!
 
@@ -618,7 +624,7 @@ class WyzeIOTCSession:
 
     def _connect(
         self,
-        timeout_secs=10,
+        timeout_secs=60,
         channel_id=0,
         username="admin",
         password="888888",
@@ -630,24 +636,56 @@ class WyzeIOTCSession:
             if session_id < 0:  # type: ignore
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
+            if not hasattr(self.camera, "dtls") or self.camera.dtls == 0:
+                logger.debug("Connect via IOTC_Connect_ByUID_Parallel")
+                security_mode = 0
+                session_id = tutk.iotc_connect_by_uid_parallel(
+                    self.tutk_platform_lib, self.camera.p2p_id, self.session_id
+                )
+            else:
+                logger.debug("Connect via IOTC_Connect_ByUIDEx")
+                password = self.camera.enr
+                security_mode = 1
+                auth = self.camera.enr + self.camera.mac.upper()
+                hash = hashlib.sha256(auth.encode("utf-8"))
+                bArr = bytearray(hash.digest())[0:6]
 
-            session_id = tutk.iotc_connect_by_uid_parallel(
-                self.tutk_platform_lib, self.camera.p2p_id, self.session_id
-            )
+                authKey = (
+                    base64.standard_b64encode(bArr)
+                    .decode()
+                    .replace("+", "Z")
+                    .replace("/", "9")
+                    .replace("=", "A")
+                    .encode()
+                )
+
+                session_id = tutk.iotc_connect_by_uid_ex(
+                    self.tutk_platform_lib,
+                    self.camera.p2p_id,
+                    self.session_id,
+                    authKey,
+                )
+
             if session_id < 0:  # type: ignore
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
 
             self.session_check()
 
+            resend = 1
+            if self.camera.product_model == "WVOD1":
+                resend = 0
+
             self.state = WyzeIOTCSessionState.AV_CONNECTING
-            av_chan_id, pn_serv_type = tutk.av_client_start(
+            av_chan_id = tutk.av_client_start(
                 self.tutk_platform_lib,
                 self.session_id,
                 username.encode("ascii"),
                 password.encode("ascii"),
                 timeout_secs,
                 channel_id,
+                security_mode,
+                resend,
             )
 
             if av_chan_id < 0:  # type: ignore
@@ -667,7 +705,9 @@ class WyzeIOTCSession:
             f"expected_chan={channel_id}"
         )
 
-        tutk.av_client_set_max_buf_size(self.tutk_platform_lib, max_buf_size)
+        tutk.av_client_set_max_buf_size(
+            self.tutk_platform_lib, channel_id, max_buf_size
+        )
 
     def _auth(self):
         if self.state == WyzeIOTCSessionState.CONNECTING_FAILED:
