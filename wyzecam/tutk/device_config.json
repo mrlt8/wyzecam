@@ -86,6 +86,10 @@
       ]
     },
     "WVOD1": {
+      "29": [
+        "10008",
+        "10007"
+      ],
       "13": [
         "10058",
         "10059",
@@ -691,11 +695,11 @@
     }
   },
   "models": [
-      "WYZEC1",
-      "WYZEC1-JZ",
-      "WYZECP1_JEF",
-      "WVODB1",
-      "WVOD1",
-      "WYZE_CAKP2JFUS"
+    "WYZEC1",
+    "WYZEC1-JZ",
+    "WYZECP1_JEF",
+    "WVODB1",
+    "WVOD1",
+    "WYZE_CAKP2JFUS"
   ]
 }

@@ -720,11 +720,15 @@ class WyzeIOTCSession:
         self.state = WyzeIOTCSessionState.AUTHENTICATING
         try:
             with self.iotctrl_mux() as mux:
-                challenge = mux.send_ioctl(K10000ConnectRequest())
+                wake_mac = False
+                if self.camera.product_model == "WVOD1":
+                    wake_mac = self.camera.mac
+
+                challenge = mux.send_ioctl(K10000ConnectRequest(wake_mac))
                 challenge_response = respond_to_ioctrl_10001(
                     challenge.result(),
                     challenge.resp_protocol,
-                    self.camera.enr,
+                    self.camera.enr + self.camera.parent_enr,
                     self.camera.product_model,
                     self.camera.mac,
                     self.account.phone_id,
@@ -736,23 +740,23 @@ class WyzeIOTCSession:
                 ), f"Authentication did not succeed! {auth_response}"
                 self.camera.set_camera_info(auth_response["cameraInfo"])
 
-                if self.camera.product_model != "WYZEDB3":
-                    resolving = mux.send_ioctl(
-                        K10056SetResolvingBit(
-                            self.preferred_frame_size, self.preferred_bitrate
-                        )
-                    )
-
-                    mux.waitfor(resolving)
-                else:
+                if (
+                    self.camera.product_model == "WYZEDB3"
+                    or self.camera.product_model == "WVOD1"
+                ):
                     # doorbell has a different message for setting resolutions
                     resolving = mux.send_ioctl(
                         K10052DBSetResolvingBit(
                             self.preferred_frame_size, self.preferred_bitrate
                         )
                     )
-
-                    mux.waitfor(resolving)
+                else:
+                    resolving = mux.send_ioctl(
+                        K10056SetResolvingBit(
+                            self.preferred_frame_size, self.preferred_bitrate
+                        )
+                    )
+                mux.waitfor(resolving)
                 self.state = WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
         except tutk.TutkError:
             self._disconnect()

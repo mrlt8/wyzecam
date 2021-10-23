@@ -114,9 +114,24 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
 
     expected_response_code = 10001
 
-    def __init__(self):
+    def __init__(self, mac):
         """Construct a new K10000ConnectRequest"""
         super().__init__(10000)
+        self.wake_up = False
+        if mac:
+            wake_dict = {
+                "cameraInfo": {
+                    "mac": mac,
+                    "encFlag": 0,
+                    "wakeupFlag": 1,
+                }
+            }
+            self.wake_up = json.dumps(wake_dict, separators=(",", ":")).encode()
+
+    def encode(self) -> bytes:
+        if self.wake_up:
+            return encode(10000, len(self.wake_up), bytes(self.wake_up))
+        return encode(10000, 0, bytes())
 
     def parse_response(self, resp_data):
         return resp_data
@@ -460,7 +475,7 @@ def respond_to_ioctrl_10001(
     elif camera_status == 4:
         logger.warning("Camera is checking enr, can't auth.")
         return None
-    elif camera_status not in [1, 3]:
+    elif camera_status not in [1, 3, 6]:
         logger.warning(
             f"Unexpected mode for connect challenge response (10001): {camera_status}"
         )
@@ -471,6 +486,10 @@ def respond_to_ioctrl_10001(
     if camera_status == 3:
         assert len(enr.encode("ascii")) >= 16, "Enr expected to be 16 bytes"
         camera_secret_key = enr.encode("ascii")[0:16]
+    if camera_status == 6:
+        secret_key = enr.encode("ascii")[0:16]
+        camera_enr_b = xxtea.decrypt(camera_enr_b, secret_key, padding=False)
+        camera_secret_key = enr.encode("ascii")[16:32]
 
     challenge_response = xxtea.decrypt(
         camera_enr_b, camera_secret_key, padding=False
