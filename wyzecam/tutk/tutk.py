@@ -421,9 +421,9 @@ class AVClientStartInConfig(FormattedStructure):
         ("timeout_sec", c_uint32),
         ("account_or_identity", c_char_p),
         ("password_or_token", c_char_p),
-        ("resend", c_int8),
-        ("security_mode", c_int),
-        ("auth_type", c_int),
+        ("resend", c_int32),
+        ("security_mode", c_uint32),
+        ("auth_type", c_uint32),
         ("sync_recv_data", c_int32),
     ]
 
@@ -432,10 +432,10 @@ class AVClientStartOutConfig(FormattedStructure):
     _fields_ = [
         ("cb", c_uint32),
         ("server_type", c_uint32),
-        ("resend", c_int8),
+        ("resend", c_int32),
         ("two_way_streaming", c_int32),
         ("sync_recv_data", c_int32),
-        ("security_mode", c_int),
+        ("security_mode", c_uint32),
     ]
 
 
@@ -521,7 +521,7 @@ def av_recv_io_ctrl(
         pointer(pn_io_ctrl_type),
         ctl_data,
         c_int(ctl_data_len),
-        c_int(timeout_ms),
+        c_uint(timeout_ms),
     )
 
     return (
