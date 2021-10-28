@@ -11,8 +11,8 @@ SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
 SC_VALUE = "9f275790cab94a72bd206c8876429f3c"
 WYZE_APP_API_KEY = "WMXHYf79Nr5gIlt3r0r7p9Tcw5bvs6BB4U8O8nGJ"
 
-SCALE_USER_AGENT = "Wyze/2.24.52 (iPhone; iOS 15.0; Scale/3.00)"
-WYZE_APP_VERSION_NUM = "2.24.52"
+SCALE_USER_AGENT = "Wyze/2.25.21 (iPhone; iOS 15.1; Scale/3.00)"
+WYZE_APP_VERSION_NUM = "2.25.21"
 
 
 def login(
@@ -225,7 +225,7 @@ def _get_payload(access_token, phone_id):
     return payload
 
 
-def get_headers(phone_id, user_agent="wyze_ios_2.24.52"):
+def get_headers(phone_id, user_agent="wyze_ios_2.25.21"):
     return {
         "X-API-Key": WYZE_APP_API_KEY,
         "Phone-Id": phone_id,
