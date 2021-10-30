@@ -292,20 +292,20 @@ class SInfoStructEx(FormattedStructure):
         ),  # The IP address of remote site used during this IOTC session.
         (
             "remote_port",
-            c_ushort,
+            c_uint16,
         ),  # The port number of remote site used during this IOTC session.
         (
             "tx_packet_count",
-            c_uint,
+            c_uint32,
         ),  # The total packets sent from the device and the client during this IOTC session.
         (
             "rx_packet_count",
-            c_uint,
+            c_uint32,
         ),  # The total packets received in the device and the client during this IOTC session
-        ("iotc_version", c_uint),
-        ("vendor_id", c_ushort),
-        ("product_id", c_ushort),
-        ("group_id", c_ushort),
+        ("iotc_version", c_uint32),
+        ("vendor_id", c_uint16),
+        ("product_id", c_uint16),
+        ("group_id", c_uint16),
         (
             "is_secure",
             c_uint8,
@@ -323,7 +323,7 @@ class SInfoStructEx(FormattedStructure):
         ),  # The WAN IP address of remote site used during this IOTC session and it is only valid in P2P or Relay mode
         (
             "remote_wan_port",
-            c_ushort,
+            c_uint16,
         ),  # The WAN port number of remote site used during this IOTC session and it is only valid in P2P or Relay mode
         (
             "is_nebula",
@@ -456,11 +456,11 @@ def av_recv_frame_data(
     :return: a 4-tuple of errno, frame_data, frame_info, and frame_index
     """
     frame_data_max_len = 5 * 1024 * 1024
-    frame_data_actual_len = c_int()
-    frame_data_expected_len = c_int()
+    frame_data_actual_len = c_int32()
+    frame_data_expected_len = c_int32()
     frame_data = (c_char * frame_data_max_len)()
-    frame_info_actual_len = c_int()
-    frame_index = c_uint()
+    frame_info_actual_len = c_int32()
+    frame_index = c_uint32()
 
     frame_info_max_len = max(sizeof(FrameInfo3Struct), sizeof(FrameInfoStruct))
     frame_info = (c_char * frame_info_max_len)()
@@ -468,11 +468,11 @@ def av_recv_frame_data(
     errno = tutk_platform_lib.avRecvFrameData2(
         av_chan_id,
         pointer(frame_data),
-        c_int(frame_data_max_len),
+        c_int32(frame_data_max_len),
         pointer(frame_data_actual_len),
         pointer(frame_data_expected_len),
         pointer(frame_info),
-        c_int(frame_info_max_len),
+        c_int32(frame_info_max_len),
         pointer(frame_info_actual_len),
         pointer(frame_index),
     )
