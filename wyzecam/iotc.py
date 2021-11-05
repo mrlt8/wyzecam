@@ -638,14 +638,12 @@ class WyzeIOTCSession:
             self.session_id = session_id
             if not hasattr(self.camera, "dtls") or self.camera.dtls == 0:
                 logger.debug("Connect via IOTC_Connect_ByUID_Parallel")
-                security_mode = 0
                 session_id = tutk.iotc_connect_by_uid_parallel(
                     self.tutk_platform_lib, self.camera.p2p_id, self.session_id
                 )
             else:
                 logger.debug("Connect via IOTC_Connect_ByUIDEx")
                 password = self.camera.enr
-                security_mode = 1
                 auth = self.camera.enr + self.camera.mac.upper()
                 hash = hashlib.sha256(auth.encode("utf-8"))
                 bArr = bytearray(hash.digest())[0:6]
@@ -684,7 +682,6 @@ class WyzeIOTCSession:
                 password.encode("ascii"),
                 timeout_secs,
                 channel_id,
-                security_mode,
                 resend,
             )
 

@@ -4,7 +4,6 @@ from typing import Optional, Union
 import pathlib
 from ctypes import (
     CDLL,
-    Array,
     Structure,
     c_char,
     c_char_p,
@@ -15,7 +14,6 @@ from ctypes import (
     c_uint8,
     c_uint16,
     c_uint32,
-    c_ushort,
     cdll,
     pointer,
     sizeof,
@@ -532,7 +530,7 @@ def av_recv_io_ctrl(
 
 
 def av_client_set_max_buf_size(
-    tutk_platform_lib: CDLL, channel_id: int, size: int
+    tutk_platform_lib: CDLL, channel_id: c_int, size: c_int
 ) -> None:
     """Set the maximum video frame buffer used in AV client.
 
@@ -543,7 +541,7 @@ def av_client_set_max_buf_size(
     :param tutk_platform_lib: the c library loaded from the 'load_library' call.
     :param size: The maximum video frame buffer, in unit of kilo-byte
     """
-    tutk_platform_lib.avClientSetRecvBufMaxSize(c_int(channel_id), c_int(size))
+    tutk_platform_lib.avClientSetRecvBufMaxSize(channel_id, size)
 
 
 def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
@@ -569,7 +567,7 @@ def av_send_io_ctrl(
         cdata = None
     else:
         length = len(data)
-        cdata = c_char_p(data)
+        cdata = data
     errcode: c_int = tutk_platform_lib.avSendIOCtrl(
         av_chan_id, c_uint(ctrl_type), cdata, length
     )
@@ -595,7 +593,6 @@ def av_client_start(
     password: bytes,
     timeout_secs: int,
     channel_id: int,
-    security_mode: int,
     resend: c_int8,
 ) -> typing.Tuple[c_int, c_uint]:
     """Start an AV client.
@@ -625,7 +622,7 @@ def av_client_start(
     AVC_in.account_or_identity = username
     AVC_in.password_or_token = password
     AVC_in.resend = resend
-    AVC_in.security_mode = security_mode
+    AVC_in.security_mode = 2
     AVC_in.auth_type = 0
 
     AVC_out = AVClientStartOutConfig()
@@ -700,7 +697,7 @@ def iotc_connect_by_uid(tutk_platform_lib: CDLL, p2p_id: str) -> c_int:
     :return: IOTC session ID if return value >= 0, error code if return value < 0
     """
     session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUID(
-        c_char_p(p2p_id.encode("ascii"))
+        p2p_id.encode("ascii")
     )
     return session_id
 
@@ -733,7 +730,7 @@ def iotc_connect_by_uid_parallel(
     :return: IOTC session ID if return value >= 0, error code if return value < 0
     """
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUID_Parallel(
-        c_char_p(p2p_id.encode("ascii")), session_id
+        p2p_id.encode("ascii"), session_id
     )
     return resultant_session_id
 
@@ -762,7 +759,7 @@ def iotc_connect_by_uid_ex(
     connect_input.timeout = 60
 
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
-        c_char_p(p2p_id.encode("ascii")), session_id, pointer(connect_input)
+        p2p_id.encode("ascii"), session_id, pointer(connect_input)
     )
     return resultant_session_id
 
@@ -831,7 +828,7 @@ def iotc_initialize(tutk_platform_lib: CDLL, udp_port: int = 0) -> int:
 
 def TUTK_SDK_Set_License_Key(tutk_platform_lib: CDLL, key: str) -> int:
 
-    errno: int = tutk_platform_lib.TUTK_SDK_Set_License_Key(key.encode())
+    errno: int = tutk_platform_lib.TUTK_SDK_Set_License_Key(key.encode("ascii"))
     return errno
 
 
