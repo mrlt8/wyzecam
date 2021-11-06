@@ -544,6 +544,19 @@ def av_client_set_max_buf_size(
     tutk_platform_lib.avClientSetRecvBufMaxSize(channel_id, size)
 
 
+def av_client_clean_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
+    """Clean the video buffer both in client and device, and clean the audio
+    buffer of the client.
+
+    A client with multiple device connection application should call
+    this function to clean AV buffer while switch to another devices.
+
+    :param tutk_platform_lib: the c library loaded from the 'load_library' call.
+    :param channel_id: The channel ID of the AV channel to clean buffer
+    """
+    tutk_platform_lib.avClientCleanBuf(channel_id)
+
+
 def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
     """Stop an AV client.
 

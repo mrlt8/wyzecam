@@ -362,7 +362,7 @@ class WyzeIOTCSession:
         assert self.av_chan_id is not None, "Please call _connect() first!"
 
         while True:
-            errno, frame_data, frame_info, frame_idx = tutk.av_recv_frame_data(
+            errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
@@ -701,10 +701,7 @@ class WyzeIOTCSession:
             f"chan_id={self.av_chan_id} "
             f"expected_chan={channel_id}"
         )
-
-        tutk.av_client_set_max_buf_size(
-            self.tutk_platform_lib, channel_id, max_buf_size
-        )
+        tutk.av_client_clean_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def _auth(self):
         if self.state == WyzeIOTCSessionState.CONNECTING_FAILED:
