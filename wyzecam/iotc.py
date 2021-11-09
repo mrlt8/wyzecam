@@ -361,13 +361,17 @@ class WyzeIOTCSession:
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
 
+        bad_frames = 0
         while True:
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
+                    if bad_frames > 120:
+                        raise tutk.TutkError(errno)
                     time.sleep(1.0 / 40)
+                    bad_frames += 1
                     continue
                 elif errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -378,6 +382,7 @@ class WyzeIOTCSession:
                 else:
                     raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
+            bad_frames = 0
             # if frame_info.frame_size != self.preferred_frame_size:
             #     if frame_info.frame_size < 2:
             #         logger.debug(
@@ -684,6 +689,7 @@ class WyzeIOTCSession:
                 channel_id,
                 resend,
             )
+            tutk.av_client_clean_buf(self.tutk_platform_lib, av_chan_id)
 
             if av_chan_id < 0:  # type: ignore
                 raise tutk.TutkError(av_chan_id)
@@ -701,7 +707,6 @@ class WyzeIOTCSession:
             f"chan_id={self.av_chan_id} "
             f"expected_chan={channel_id}"
         )
-        tutk.av_client_clean_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def _auth(self):
         if self.state == WyzeIOTCSessionState.CONNECTING_FAILED:
