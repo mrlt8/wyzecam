@@ -5,6 +5,7 @@ import pathlib
 from ctypes import (
     CDLL,
     Structure,
+    byref,
     c_char,
     c_char_p,
     c_int,
@@ -580,7 +581,7 @@ def av_send_io_ctrl(
         cdata = None
     else:
         length = len(data)
-        cdata = data
+        cdata = c_char_p(data)
     errcode: c_int = tutk_platform_lib.avSendIOCtrl(
         av_chan_id, c_uint(ctrl_type), cdata, length
     )
@@ -637,18 +638,19 @@ def av_client_start(
     AVC_in.resend = resend
     AVC_in.security_mode = 2
     AVC_in.auth_type = 0
+    AVC_in.sync_recv_data = 0
 
     AVC_out = AVClientStartOutConfig()
     AVC_out.cb = sizeof(AVC_out)
 
     av_chan_id = tutk_platform_lib.avClientStartEx(
-        pointer(AVC_in), pointer(AVC_out)
+        pointer(AVC_in), byref(AVC_out)
     )
     return av_chan_id
 
 
 def av_initialize(
-    tutk_platform_lib: CDLL, max_num_channels: Optional[int] = 1
+    tutk_platform_lib: CDLL, max_num_channels: Optional[c_int] = 1
 ) -> int:
     """Initialize AV module.
 
@@ -661,7 +663,7 @@ def av_initialize(
 
     :return:The actual maximum number of AV channels to be set. Error code if return value < 0.
     """
-    max_chans: int = tutk_platform_lib.avInitialize(max_num_channels)
+    max_chans: c_int = tutk_platform_lib.avInitialize(max_num_channels)
     return max_chans
 
 
@@ -710,7 +712,7 @@ def iotc_connect_by_uid(tutk_platform_lib: CDLL, p2p_id: str) -> c_int:
     :return: IOTC session ID if return value >= 0, error code if return value < 0
     """
     session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUID(
-        p2p_id.encode("ascii")
+        c_char_p(p2p_id.encode("ascii")), p2p_id
     )
     return session_id
 
@@ -743,13 +745,13 @@ def iotc_connect_by_uid_parallel(
     :return: IOTC session ID if return value >= 0, error code if return value < 0
     """
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUID_Parallel(
-        p2p_id.encode("ascii"), session_id
+        c_char_p(p2p_id.encode("ascii")), session_id
     )
     return resultant_session_id
 
 
 def iotc_connect_by_uid_ex(
-    tutk_platform_lib: CDLL, p2p_id: str, session_id: c_int, auth_key: str
+    tutk_platform_lib: CDLL, p2p_id: str, session_id: c_int, auth_key: bytes
 ) -> c_int:
     """Used by a client to connect a device and bind to a specified session ID.
 
@@ -772,7 +774,7 @@ def iotc_connect_by_uid_ex(
     connect_input.timeout = 60
 
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
-        p2p_id.encode("ascii"), session_id, pointer(connect_input)
+        c_char_p(p2p_id.encode("ascii")), session_id, pointer(connect_input)
     )
     return resultant_session_id
 

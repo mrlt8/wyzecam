@@ -368,7 +368,7 @@ class WyzeIOTCSession:
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if bad_frames > 120:
+                    if bad_frames > 500:
                         raise tutk.TutkError(errno)
                     time.sleep(1.0 / 40)
                     bad_frames += 1
@@ -382,7 +382,6 @@ class WyzeIOTCSession:
                 else:
                     raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
-            bad_frames = 0
             # if frame_info.frame_size != self.preferred_frame_size:
             #     if frame_info.frame_size < 2:
             #         logger.debug(
@@ -393,6 +392,7 @@ class WyzeIOTCSession:
             #         # wyze doorbell has weird rotated image sizes.
             #         if frame_info.frame_size - 3 != self.preferred_frame_size:
             #             continue
+            bad_frames = 0
 
             yield frame_data, frame_info
 
@@ -629,10 +629,10 @@ class WyzeIOTCSession:
 
     def _connect(
         self,
-        timeout_secs=60,
-        channel_id=0,
-        username="admin",
-        password="888888",
+        timeout_secs: int = 60,
+        channel_id: int = 0,
+        username: str = "admin",
+        password: str = "888888",
         max_buf_size=5 * 1024 * 1024,
     ):
         try:
@@ -659,7 +659,7 @@ class WyzeIOTCSession:
                     .replace("+", "Z")
                     .replace("/", "9")
                     .replace("=", "A")
-                    .encode()
+                    .encode("ascii")
                 )
 
                 session_id = tutk.iotc_connect_by_uid_ex(
