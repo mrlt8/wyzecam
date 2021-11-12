@@ -772,6 +772,11 @@ class WyzeIOTCSession:
             tutk.av_client_stop(self.tutk_platform_lib, self.av_chan_id)
         self.av_chan_id = None
         if self.session_id is not None:
+            errno = tutk.iotc_connect_stop_by_session_id(
+                self.tutk_platform_lib, self.session_id
+            )
+            if errno < 0:
+                warnings.warn(tutk.TutkError(errno))
             tutk.iotc_session_close(self.tutk_platform_lib, self.session_id)
         self.session_id = None
         self.state = WyzeIOTCSessionState.DISCONNECTED
