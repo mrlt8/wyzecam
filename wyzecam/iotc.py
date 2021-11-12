@@ -360,7 +360,7 @@ class WyzeIOTCSession:
 
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
-
+        first_run = True
         bad_frames = 0
         while True:
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
@@ -368,10 +368,11 @@ class WyzeIOTCSession:
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if bad_frames > 500:
+                    if bad_frames > 500 and not first_run:
                         raise tutk.TutkError(errno)
                     time.sleep(1.0 / 40)
                     bad_frames += 1
+                    warnings.warn("Frame not available")
                     continue
                 elif errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -393,6 +394,7 @@ class WyzeIOTCSession:
             #         if frame_info.frame_size - 3 != self.preferred_frame_size:
             #             continue
             bad_frames = 0
+            first_run = False
 
             yield frame_data, frame_info
 
