@@ -117,20 +117,21 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
     def __init__(self, mac):
         """Construct a new K10000ConnectRequest"""
         super().__init__(10000)
-        self.wake_up = False
-        if mac:
+        self.mac = mac
+
+    def encode(self) -> bytes:
+        if self.mac:
             wake_dict = {
                 "cameraInfo": {
-                    "mac": mac,
+                    "mac": self.mac,
                     "encFlag": 0,
                     "wakeupFlag": 1,
                 }
             }
-            self.wake_up = json.dumps(wake_dict, separators=(",", ":")).encode()
-
-    def encode(self) -> bytes:
-        if self.wake_up:
-            return encode(10000, len(self.wake_up), bytes(self.wake_up))
+            wake_json = json.dumps(wake_dict, separators=(",", ":")).encode(
+                "ascii"
+            )
+            return encode(10000, len(wake_json), wake_json)
         return encode(10000, 0, bytes())
 
     def parse_response(self, resp_data):
@@ -487,6 +488,7 @@ def respond_to_ioctrl_10001(
         assert len(enr.encode("ascii")) >= 16, "Enr expected to be 16 bytes"
         camera_secret_key = enr.encode("ascii")[0:16]
     if camera_status == 6:
+        assert len(enr.encode("ascii")) >= 32, "Enr expected to be 32 bytes"
         secret_key = enr.encode("ascii")[0:16]
         camera_enr_b = xxtea.decrypt(camera_enr_b, secret_key, padding=False)
         camera_secret_key = enr.encode("ascii")[16:32]

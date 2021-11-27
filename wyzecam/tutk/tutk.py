@@ -5,7 +5,6 @@ import pathlib
 from ctypes import (
     CDLL,
     Structure,
-    byref,
     c_char,
     c_char_p,
     c_int,
@@ -475,6 +474,15 @@ class St_IOTCConnectInput(FormattedStructure):
     ]
 
 
+class LogAttr(FormattedStructure):
+    _fields_ = [
+        ("path", c_char_p),
+        ("log_level", c_uint32),
+        ("file_max_size", c_int32),
+        ("file_max_count", c_int32),
+    ]
+
+
 class AVClientStartInConfig(FormattedStructure):
     _fields_ = [
         ("cb", c_uint32),
@@ -518,11 +526,11 @@ def av_recv_frame_data(
     :return: a 4-tuple of errno, frame_data, frame_info, and frame_index
     """
     frame_data_max_len = 5 * 1024 * 1024
-    frame_data_actual_len = c_int32()
-    frame_data_expected_len = c_int32()
+    frame_data_actual_len = c_int()
+    frame_data_expected_len = c_int()
     frame_data = (c_char * frame_data_max_len)()
-    frame_info_actual_len = c_int32()
-    frame_index = c_uint32()
+    frame_info_actual_len = c_int()
+    frame_index = c_uint()
 
     frame_info_max_len = max(sizeof(FrameInfo3Struct), sizeof(FrameInfoStruct))
     frame_info = (c_char * frame_info_max_len)()
@@ -530,11 +538,11 @@ def av_recv_frame_data(
     errno = tutk_platform_lib.avRecvFrameData2(
         av_chan_id,
         pointer(frame_data),
-        c_int32(frame_data_max_len),
+        c_int(frame_data_max_len),
         pointer(frame_data_actual_len),
         pointer(frame_data_expected_len),
         pointer(frame_info),
-        c_int32(frame_info_max_len),
+        c_int(frame_info_max_len),
         pointer(frame_info_actual_len),
         pointer(frame_index),
     )
@@ -707,7 +715,7 @@ def av_client_start(
     AVC_out.cb = sizeof(AVC_out)
 
     av_chan_id = tutk_platform_lib.avClientStartEx(
-        pointer(AVC_in), byref(AVC_out)
+        pointer(AVC_in), pointer(AVC_out)
     )
     return av_chan_id
 
@@ -872,6 +880,31 @@ def iotc_set_log_path(tutk_platform_lib: CDLL, path: str) -> None:
     )
 
 
+def iotc_set_log_attr(
+    tutk_platform_lib: CDLL,
+    path: str,
+    log_level: c_int = 0,
+    max_size: c_int = 0,
+    max_count: c_int = 0,
+) -> int:
+    """
+    Set Attribute of log file
+
+    :param path: The path of log file, NULL = disable Log
+    :param log_level: The log message with level log_level or higher would be logged, LEVEL_SILENCE = nothing would be logged
+    :param file_max_size: The maximum size of log file in bytes, 0 = unlimited
+    :param file_max_count: The maximum number of log file if file_max_size is set, 0 = unlimited
+    """
+    log_attr = LogAttr()
+    log_attr.path = path.encode("ascii")
+    log_attr.log_level = log_level
+    log_attr.file_max_size = max_size
+    log_attr.file_max_count = max_count
+
+    errno: int = tutk_platform_lib.IOTC_Set_Log_Attr(pointer(log_attr))
+    return errno
+
+
 def iotc_get_version(tutk_platform_lib: CDLL) -> int:
     """Get the version of IOTC module.
 
@@ -906,7 +939,7 @@ def iotc_initialize(tutk_platform_lib: CDLL, udp_port: int = 0) -> int:
 
 def TUTK_SDK_Set_License_Key(tutk_platform_lib: CDLL, key: str) -> int:
 
-    errno: int = tutk_platform_lib.TUTK_SDK_Set_License_Key(key.encode("ascii"))
+    errno: int = tutk_platform_lib.TUTK_SDK_Set_License_Key(c_char_p(key.encode("ascii")))
     return errno
 
 
