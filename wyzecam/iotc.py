@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, Iterator, Optional, Tuple, Union
 
 import hashlib
@@ -362,17 +363,20 @@ class WyzeIOTCSession:
         assert self.av_chan_id is not None, "Please call _connect() first!"
         first_run = True
         bad_frames = 0
+        max_noready = int(os.getenv("MAX_NOREADY", 500))
         while True:
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if bad_frames > 500 and not first_run:
+                    if bad_frames > max_noready and not first_run:
                         raise tutk.TutkError(errno)
                     time.sleep(1.0 / 40)
                     bad_frames += 1
-                    warnings.warn("Frame not available")
+                    warnings.warn(
+                        f"Frame not available [{bad_frames}/{max_noready}]"
+                    )
                     continue
                 elif errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -393,10 +397,9 @@ class WyzeIOTCSession:
             #         # wyze doorbell has weird rotated image sizes.
             #         if frame_info.frame_size - 3 != self.preferred_frame_size:
             #             continue
+            yield frame_data, frame_info
             bad_frames = 0
             first_run = False
-
-            yield frame_data, frame_info
 
     def recv_video_frame(
         self,
@@ -631,7 +634,7 @@ class WyzeIOTCSession:
 
     def _connect(
         self,
-        timeout_secs: int = 60,
+        timeout_secs: int = 10,
         channel_id: int = 0,
         username: str = "admin",
         password: str = "888888",
