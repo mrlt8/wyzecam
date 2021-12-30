@@ -418,6 +418,31 @@ class K10640GetSpotlightStatus(TutkWyzeProtocolMessage):
         super().__init__(10640)
 
 
+class K10058TakePhoto(TutkWyzeProtocolMessage):
+    """
+    Take photo on camera sensor and save to /media/mmc/photo/YYYYMMDD/YYYYMMDD_HH_MM_SS.jpg
+    """
+
+    expected_response_code = 10059
+
+    def __init__(self):
+        super().__init__(10058)
+
+
+class K10148StartBoa(TutkWyzeProtocolMessage):
+    """
+    Temporarily start boa server
+    """
+
+    expected_response_code = 10149
+
+    def __init__(self):
+        super().__init__(10148)
+
+    def encode(self) -> bytes:
+        return encode(10148, 5, bytes([0, 1, 0, 0, 0]))
+
+
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:
     assert (data is None and data_len == 0) or (
         data is not None and data_len == len(data)
