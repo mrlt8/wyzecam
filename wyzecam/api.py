@@ -7,12 +7,14 @@ from hashlib import md5
 import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
+IOS_VERSION = "15.2"
+APP_VERSION = "2.27.32"
+
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
 SC_VALUE = "9f275790cab94a72bd206c8876429f3c"
 WYZE_APP_API_KEY = "WMXHYf79Nr5gIlt3r0r7p9Tcw5bvs6BB4U8O8nGJ"
 
-SCALE_USER_AGENT = "Wyze/2.26.21 (iPhone; iOS 15.1; Scale/3.00)"
-WYZE_APP_VERSION_NUM = "2.26.21"
+SCALE_USER_AGENT = f"Wyze/{APP_VERSION} (iPhone; iOS {IOS_VERSION}; Scale/3.00)"
 
 
 def login(
@@ -46,6 +48,50 @@ def login(
     )
     resp.raise_for_status()
 
+    return WyzeCredential.parse_obj(dict(resp.json(), phone_id=phone_id))
+
+
+def mfa_login(
+    email: str,
+    password: str,
+    phone_id: str,
+    mfa_type: str,
+    verification_id: str,
+    verification_code: str,
+) -> WyzeCredential:
+    """Complete the MFA Authentication with Wyze
+
+    This method calls out to the `/user/login` endpoint of
+    `auth-prod.api.wyze.com` (using https), with the verification code 
+    to retrieve an access token necessary to retrieve other information 
+    from the wyze server.
+
+    :param email: Email address used to log into wyze account
+    :param password: Password used to log into wyze account.
+    :param phone_id: the ID of the device to emulate when talking to wyze.
+    :param mfa_type: The MFA type used - `PrimaryPhone` for SMS based verification
+                     and `TotpVerificationCode` for time-based one-time passwords.
+    :param verification_id: `session_id` for SMS-based verification or `app_id` for
+                            time-based one-time passwords.
+    :param verification_code: The verification code from SMS or TOTP app.
+
+    :returns: a [WyzeCredential][wyzecam.api.WyzeCredential] with the access information, suitable
+              for passing to [get_user_info()][wyzecam.api.get_user_info], or
+              [get_camera_list()][wyzecam.api.get_camera_list].
+    """
+    payload = {
+        "email": email,
+        "password": triplemd5(password),
+        "mfa_type": mfa_type,
+        "verification_id": verification_id,
+        "verification_code": verification_code,
+    }
+    resp = requests.post(
+        "https://auth-prod.api.wyze.com/user/login",
+        json=payload,
+        headers=get_headers(phone_id),
+    )
+    resp.raise_for_status()
     return WyzeCredential.parse_obj(dict(resp.json(), phone_id=phone_id))
 
 
@@ -210,12 +256,11 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
     return result
 
 
-def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> str:
-    """Gets webrtc for camera"""
-
+def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
+    """Gets webrtc for camera."""
     ui_headers = get_headers(auth_info.phone_id, SCALE_USER_AGENT)
     ui_headers["content-type"] = "application/json"
-    ui_headers["authorization"] = auth_info.access_token    
+    ui_headers["authorization"] = auth_info.access_token
     resp = requests.get(
         f"https://webrtc.api.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,
@@ -223,15 +268,19 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> str:
     resp.raise_for_status()
     resp_json = resp.json()
     assert resp_json["code"] == 1
-    return resp_json['results']['signalingUrl']
+    return {
+        "signalingUrl": resp_json["results"]["signalingUrl"],
+        "ClientId": auth_info.phone_id,
+        "signalToken": resp_json["results"]["signalToken"],
+    }
 
 
 def _get_payload(access_token, phone_id):
     payload = {
         "sc": SC_VALUE,
         "sv": SV_VALUE,
-        "app_ver": f"com.hualai.WyzeCam___{WYZE_APP_VERSION_NUM}",
-        "app_version": f"{WYZE_APP_VERSION_NUM}",
+        "app_ver": f"com.hualai.WyzeCam___{APP_VERSION}",
+        "app_version": f"{APP_VERSION}",
         "app_name": "com.hualai.WyzeCam",
         "phone_system_type": "1",
         "ts": int(time.time() * 1000),
@@ -241,11 +290,11 @@ def _get_payload(access_token, phone_id):
     return payload
 
 
-def get_headers(phone_id, user_agent="wyze_ios_2.26.21"):
+def get_headers(phone_id, user_agent=False):
     return {
         "X-API-Key": WYZE_APP_API_KEY,
         "Phone-Id": phone_id,
-        "User-Agent": user_agent,
+        "User-Agent": user_agent or f"wyze_ios_{APP_VERSION}",
     }
 
 
